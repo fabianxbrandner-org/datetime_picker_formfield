@@ -1,3 +1,7 @@
+## [3.0.0]
+
+- Upgrade to Flutter 3.0
+
 ## [2.0.0]
 
 - Support sound null safety.
