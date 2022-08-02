@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show TextInputFormatter;
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
@@ -11,26 +10,28 @@ import 'package:intl/intl.dart' show DateFormat;
 /// When a [controller] is specified, [initialValue] must be null (the
 /// default).
 class DateTimeField extends FormField<DateTime> {
+  /// A [FormField<DateTime>] that integrates a text input with time-chooser UIs.
+  ///
+  /// It borrows many of it's parameters from [TextFormField].
+  ///
+  /// When a [controller] is specified, [initialValue] must be null (the
+  /// default).
   DateTimeField({
     required this.format,
     required this.onShowPicker,
-
-    // From super
-    Key? key,
-    FormFieldSetter<DateTime>? onSaved,
-    FormFieldValidator<DateTime>? validator,
-    DateTime? initialValue,
-    AutovalidateMode? autovalidateMode,
-    bool enabled = true,
+    super.key,
+    super.onSaved,
+    super.validator,
+    super.initialValue,
+    super.autovalidateMode,
+    super.enabled = true,
 
     // Features
     this.resetIcon = const Icon(Icons.close),
     this.onChanged,
 
     // From TextFormField
-    // Key key,
     this.controller,
-    // String initialValue,
     this.focusNode,
     InputDecoration? decoration = const InputDecoration(),
     TextInputType? keyboardType,
@@ -64,60 +65,56 @@ class DateTimeField extends FormField<DateTime> {
     EdgeInsets scrollPadding = const EdgeInsets.all(20.0),
     bool enableInteractiveSelection = true,
     InputCounterWidgetBuilder? buildCounter,
-  }) : super(
-            key: key,
-            autovalidateMode: autovalidateMode,
-            initialValue: initialValue,
+  }) : super(builder: (field) {
+          final _DateTimeFieldState state = field as _DateTimeFieldState;
+          final InputDecoration effectiveDecoration =
+              (decoration ?? const InputDecoration())
+                  .applyDefaults(Theme.of(field.context).inputDecorationTheme);
+          return TextField(
+            controller: state._effectiveController,
+            focusNode: state._effectiveFocusNode,
+            decoration: effectiveDecoration.copyWith(
+              errorText: field.errorText,
+              suffixIcon: state.shouldShowClearIcon(effectiveDecoration)
+                  ? IconButton(
+                      icon: resetIcon!,
+                      onPressed: state.clear,
+                    )
+                  : null,
+            ),
+            keyboardType: keyboardType,
+            textInputAction: textInputAction,
+            style: style,
+            strutStyle: strutStyle,
+            textAlign: textAlign,
+            textDirection: textDirection,
+            textCapitalization: textCapitalization,
+            autofocus: autofocus,
+            readOnly: readOnly,
+            showCursor: showCursor,
+            obscureText: obscureText,
+            autocorrect: autocorrect,
+            maxLengthEnforcement: maxLengthEnforcement,
+            maxLines: maxLines,
+            minLines: minLines,
+            expands: expands,
+            maxLength: maxLength,
+            onChanged: (string) => field.didChange(tryParse(string, format)),
+            onEditingComplete: onEditingComplete,
+            onSubmitted: (string) => onFieldSubmitted == null
+                ? null
+                : onFieldSubmitted(tryParse(string, format)),
+            inputFormatters: inputFormatters,
             enabled: enabled,
-            validator: validator,
-            onSaved: onSaved,
-            builder: (field) {
-              final _DateTimeFieldState state = field as _DateTimeFieldState;
-              final InputDecoration effectiveDecoration =
-                  (decoration ?? const InputDecoration()).applyDefaults(Theme.of(field.context).inputDecorationTheme);
-              return TextField(
-                controller: state._effectiveController,
-                focusNode: state._effectiveFocusNode,
-                decoration: effectiveDecoration.copyWith(
-                  errorText: field.errorText,
-                  suffixIcon: state.shouldShowClearIcon(effectiveDecoration)
-                      ? IconButton(
-                          icon: resetIcon!,
-                          onPressed: state.clear,
-                        )
-                      : null,
-                ),
-                keyboardType: keyboardType,
-                textInputAction: textInputAction,
-                style: style,
-                strutStyle: strutStyle,
-                textAlign: textAlign,
-                textDirection: textDirection,
-                textCapitalization: textCapitalization,
-                autofocus: autofocus,
-                readOnly: readOnly,
-                showCursor: showCursor,
-                obscureText: obscureText,
-                autocorrect: autocorrect,
-                maxLengthEnforcement: maxLengthEnforcement,
-                maxLines: maxLines,
-                minLines: minLines,
-                expands: expands,
-                maxLength: maxLength,
-                onChanged: (string) => field.didChange(tryParse(string, format)),
-                onEditingComplete: onEditingComplete,
-                onSubmitted: (string) => onFieldSubmitted == null ? null : onFieldSubmitted(tryParse(string, format)),
-                inputFormatters: inputFormatters,
-                enabled: enabled,
-                cursorWidth: cursorWidth,
-                cursorRadius: cursorRadius,
-                cursorColor: cursorColor,
-                scrollPadding: scrollPadding,
-                keyboardAppearance: keyboardAppearance,
-                enableInteractiveSelection: enableInteractiveSelection,
-                buildCounter: buildCounter,
-              );
-            });
+            cursorWidth: cursorWidth,
+            cursorRadius: cursorRadius,
+            cursorColor: cursorColor,
+            scrollPadding: scrollPadding,
+            keyboardAppearance: keyboardAppearance,
+            enableInteractiveSelection: enableInteractiveSelection,
+            buildCounter: buildCounter,
+          );
+        });
 
   /// For representing the date as a string e.g.
   /// `DateFormat("EEEE, MMMM d, yyyy 'at' h:mma")`
@@ -125,19 +122,28 @@ class DateTimeField extends FormField<DateTime> {
   final DateFormat format;
 
   /// Called when the date chooser dialog should be shown.
-  final Future<DateTime?> Function(BuildContext context, DateTime? currentValue) onShowPicker;
+  final Future<DateTime?> Function(BuildContext context, DateTime? currentValue)
+      onShowPicker;
 
   /// The [InputDecoration.suffixIcon] to show when the field has text. Tapping
   /// the icon will clear the text field. Set this to `null` to disable that
   /// behavior. Also, setting the suffix icon yourself will override this option.
   final Icon? resetIcon;
 
+  /// The controller for the date input
   final TextEditingController? controller;
+
+  /// the focus node
   final FocusNode? focusNode;
+
+  /// if the field should be readonly
   final bool readOnly;
+
+  /// function to be called when the value changes
   final void Function(DateTime? value)? onChanged;
 
   @override
+  // ignore: library_private_types_in_public_api
   _DateTimeFieldState createState() => _DateTimeFieldState();
 
   /// Returns an empty string if [DateFormat.format()] throws or [date] is null.
@@ -165,10 +171,12 @@ class DateTimeField extends FormField<DateTime> {
   }
 
   /// Sets the hour and minute of a [DateTime] from a [TimeOfDay].
-  static DateTime combine(DateTime date, TimeOfDay? time) =>
-      DateTime(date.year, date.month, date.day, time?.hour ?? 0, time?.minute ?? 0);
+  static DateTime combine(DateTime date, TimeOfDay? time) => DateTime(
+      date.year, date.month, date.day, time?.hour ?? 0, time?.minute ?? 0);
 
-  static DateTime? convert(TimeOfDay? time) => time == null ? null : DateTime(1, 1, 1, time.hour, time.minute);
+  /// convert the time to datetime
+  static DateTime? convert(TimeOfDay? time) =>
+      time == null ? null : DateTime(1, 1, 1, time.hour, time.minute);
 }
 
 class _DateTimeFieldState extends FormFieldState<DateTime> {
@@ -180,7 +188,8 @@ class _DateTimeFieldState extends FormFieldState<DateTime> {
   @override
   DateTimeField get widget => super.widget as DateTimeField;
 
-  TextEditingController? get _effectiveController => widget.controller ?? _controller;
+  TextEditingController? get _effectiveController =>
+      widget.controller ?? _controller;
   FocusNode? get _effectiveFocusNode => widget.focusNode ?? _focusNode;
 
   bool get hasFocus => _effectiveFocusNode!.hasFocus;
@@ -209,7 +218,8 @@ class _DateTimeFieldState extends FormFieldState<DateTime> {
       widget.controller?.addListener(_handleControllerChanged);
 
       if (oldWidget.controller != null && widget.controller == null) {
-        _controller = TextEditingController.fromValue(oldWidget.controller!.value);
+        _controller =
+            TextEditingController.fromValue(oldWidget.controller!.value);
         _controller!.addListener(_handleControllerChanged);
       }
       if (widget.controller != null) {
@@ -267,7 +277,9 @@ class _DateTimeFieldState extends FormFieldState<DateTime> {
     // notifications for changes originating from within this class -- for
     // example, the reset() method. In such cases, the FormField value will
     // already have been set.
-    if (_effectiveController!.text != format(value)) didChange(parse(_effectiveController!.text));
+    if (_effectiveController!.text != format(value)) {
+      didChange(parse(_effectiveController!.text));
+    }
   }
 
   String format(DateTime? date) => DateTimeField.tryFormat(date, widget.format);
@@ -303,11 +315,13 @@ class _DateTimeFieldState extends FormFieldState<DateTime> {
     // Fix for ripple effect throwing exception
     // and the field staying gray.
     // https://github.com/flutter/flutter/issues/36324
-    WidgetsBinding.instance!.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() => _effectiveController!.clear());
     });
   }
 
   bool shouldShowClearIcon([InputDecoration? decoration]) =>
-      widget.resetIcon != null && (hasText || hasFocus) && decoration?.suffixIcon == null;
+      widget.resetIcon != null &&
+      (hasText || hasFocus) &&
+      decoration?.suffixIcon == null;
 }
